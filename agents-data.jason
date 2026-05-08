@@ -1,0 +1,29 @@
+[
+  {
+    "Title": "ML Forecasting",
+    "Country": "IN",
+    "StatusBadge": "Green",
+    "Status": "Adoption",
+    "CurrentStatus": "May adoption strategy review on going",
+    "NextSteps": "Review model performance at Division Level\nReview model performance at UC for Co-Mkting",
+    "LastUpdated": "2026-05-08"
+  },
+  {
+    "Title": "Unconfirmed Demand",
+    "Country": "IN",
+    "StatusBadge": "Amber",
+    "Status": "Roll Out",
+    "CurrentStatus": "Workshop scheudle to understand WoW with FG_CP India team",
+    "NextSteps": "Review IN use cases vs. Agent capabilties and define adoption strategy",
+    "LastUpdated": "2026-05-08"
+  },
+  {
+    "Title": "ML Forecasting",
+    "Country": "BD",
+    "StatusBadge": "Green",
+    "Status": "Roll Out",
+    "CurrentStatus": "May adoption strategy review in BD on going",
+    "NextSteps": "",
+    "LastUpdated": "2026-05-08"
+  }
+]
