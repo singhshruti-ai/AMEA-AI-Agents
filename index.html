@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production & Supply Chain - AI Agents Wire Diagram</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0f1923;
+            --bg-secondary: #1a2a3a;
+            --bg-card: #1e3347;
+            --bg-sidebar: #162635;
+            --text-primary: #e8f4fd;
+            --text-secondary: #8ba4b8;
+            --accent-blue: #4fc3f7;
+            --accent-green: #66bb6a;
+            --accent-orange: #ffa726;
+            --accent-purple: #ab47bc;
+            --accent-red: #ef5350;
+            --accent-teal: #26c6da;
+            --border-color: #2a4a5e;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+            --stage-planning: #4fc3f7;
+            --stage-procurement: #66bb6a;
+            --stage-production: #ffa726;
+            --stage-warehousing: #ab47bc;
+            --stage-returns: #ef5350;
+        }
+
+        body.light-theme {
+            --bg-primary: #f0f4f8;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-sidebar: #f7f9fc;
+            --text-primary: #1a2a3a;
+            --text-secondary: #5a7a8a;
+            --border-color: #d4e0ea;
+            --shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.4s ease, color 0.3s ease;
+        }
+
+        .app-container { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 340px; min-width: 340px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            padding: 20px 16px;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            position: relative; z-index: 100;
+            display: flex; flex-direction: column;
+        }
+        .sidebar.collapsed { width: 48px; min-width: 48px; padding: 20px 8px; }
+        .sidebar.collapsed .sidebar-content { opacity: 0; pointer-events: none; }
+        .sidebar.collapsed .collapse-btn span { transform: rotate(180deg); }
+
+        .collapse-btn {
+            position: absolute; top: 16px; right: 12px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-primary); width: 28px; height: 28px;
+            border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease; z-index: 10;
+        }
+        .collapse-btn:hover { background: var(--accent-blue); color: #0f1923; }
+        .collapse-btn span { display: inline-block; transition: transform 0.3s ease; font-size: 14px; }
+
+        .sidebar-content { transition: opacity 0.2s ease; flex: 1; display: flex; flex-direction: column; }
+
+        .toggle-section {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 8px; margin-bottom: 16px; margin-top: 24px;
+            background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);
+        }
+        .toggle-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+        .toggle-label.active { color: var(--text-primary); font-weight: 600; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; inset: 0; background: var(--border-color);
+            border-radius: 24px; transition: all 0.3s ease;
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background: var(--text-primary);
+            border-radius: 50%; transition: all 0.3s ease;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: var(--accent-blue); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+        .country-selector {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; margin-bottom: 16px;
+            background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);
+        }
+        .country-selector-label {
+            font-size: 11px; color: var(--text-secondary); font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .country-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .country-pill {
+            padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;
+            cursor: pointer; border: 1px solid var(--border-color);
+            background: transparent; color: var(--text-secondary);
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
+        }
+        .country-pill:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+        .country-pill.active { background: rgba(79,195,247,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+        .country-pill .flag { font-size: 14px; }
+
+        .sidebar-header {
+            font-size: 14px; color: var(--accent-blue); margin-bottom: 16px;
+            text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+            padding-bottom: 10px; border-bottom: 1px solid var(--border-color);
+        }
+
+        .agent-detail-panel { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.4s ease, opacity 0.3s ease; }
+        .agent-detail-panel.visible { max-height: 800px; opacity: 1; overflow-y: auto; }
+
+        .detail-panel-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 10px; padding: 16px; position: relative;
+            border-left: 4px solid var(--accent-blue); margin-bottom: 12px;
+        }
+        .detail-panel-close {
+            position: absolute; top: 8px; right: 10px; background: none; border: none;
+            color: var(--text-secondary); cursor: pointer; font-size: 18px; line-height: 1;
+            padding: 2px 6px; border-radius: 4px; transition: all 0.2s ease;
+        }
+        .detail-panel-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+        .detail-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-right: 24px; }
+        .detail-panel-icon {
+            width: 38px; height: 38px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+        }
+        .detail-panel-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+        .detail-panel-country-badge { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+        .detail-panel-section { margin-bottom: 12px; }
+        .detail-panel-section:last-child { margin-bottom: 0; }
+        .detail-panel-section-label {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--text-secondary); margin-bottom: 5px; font-weight: 600;
+        }
+        .detail-panel-section-value { font-size: 12px; color: var(--text-primary); line-height: 1.6; }
+        .detail-panel-section-value ul { margin: 4px 0 0 16px; padding: 0; list-style: disc; }
+        .detail-panel-section-value ul li { margin-bottom: 3px; font-size: 11px; line-height: 1.5; }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 20px; font-size: 11px;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .status-badge .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .status-badge.status-live { background: rgba(102,187,106,0.12); color: #66bb6a; border: 1px solid rgba(102,187,106,0.3); }
+        .status-badge.status-live .status-dot { background: #66bb6a; }
+        .status-badge.status-pilot { background: rgba(79,195,247,0.12); color: #4fc3f7; border: 1px solid rgba(79,195,247,0.3); }
+        .status-badge.status-pilot .status-dot { background: #4fc3f7; }
+        .status-badge.status-in-development { background: rgba(255,167,38,0.12); color: #ffa726; border: 1px solid rgba(255,167,38,0.3); }
+        .status-badge.status-in-development .status-dot { background: #ffa726; }
+        .status-badge.status-planned { background: rgba(139,164,184,0.12); color: #8ba4b8; border: 1px solid rgba(139,164,184,0.3); }
+        .status-badge.status-planned .status-dot { background: #8ba4b8; }
+        .status-badge.status-on-hold { background: rgba(239,83,80,0.12); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+        .status-badge.status-on-hold .status-dot { background: #ef5350; }
+
+        .card-status-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+        .card-country-statuses { display: flex; flex-wrap: wrap; gap: 6px; }
+        .card-country-status {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 6px; font-size: 10px;
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border-color);
+        }
+        .card-country-status .country-code { font-weight: 700; color: var(--text-secondary); min-width: 18px; }
+        .card-country-status .mini-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .card-country-status .mini-label { font-size: 9px; color: var(--text-secondary); font-weight: 500; }
+
+        .detail-live-section { margin-top: 4px; }
+        .live-data-loading { font-size: 11px; color: var(--text-secondary); padding: 8px 0; font-style: italic; }
+        .last-updated { font-size: 9px; color: var(--text-secondary); margin-top: 10px; text-align: right; font-style: italic; }
+
+        .connection-info { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-color); }
+        .connection-info-text {
+            font-size: 11px; color: var(--text-secondary); line-height: 1.6;
+            padding: 8px 10px; background: rgba(79,195,247,0.05);
+            border-radius: 6px; border: 1px solid rgba(79,195,247,0.12);
+        }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { padding: 18px 32px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
+        .header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
+        .header p { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+
+        .backbone-wrapper {
+            position: sticky; top: 0; z-index: 50;
+            background: var(--bg-primary); padding: 24px 32px 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .backbone-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-secondary); margin-bottom: 14px; }
+        .backbone { display: flex; align-items: center; justify-content: center; gap: 0; position: relative; }
+        .stage-node { display: flex; flex-direction: column; align-items: center; position: relative; cursor: default; transition: transform 0.2s ease; }
+        .stage-node:hover { transform: translateY(-2px); }
+        .stage-circle {
+            width: 60px; height: 60px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; border: 3px solid; background: var(--bg-primary);
+            transition: all 0.3s ease; position: relative; z-index: 2;
+        }
+        .stage-circle.highlighted { transform: scale(1.18); box-shadow: 0 0 22px currentColor; }
+        .stage-name {
+            margin-top: 8px; font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-secondary); text-align: center; max-width: 100px;
+        }
+        .stage-node.highlighted .stage-name { color: var(--text-primary); }
+        .stage-connector { width: 55px; height: 3px; background: var(--border-color); position: relative; margin: 0 -2px; margin-bottom: 18px; }
+        .stage-connector::after {
+            content: ''; position: absolute; right: -4px; top: -4px; width: 0; height: 0;
+            border-left: 8px solid var(--border-color); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+        }
+
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+        .connection-line { fill: none; stroke-width: 2; opacity: 0; transition: opacity 0.4s ease; stroke-dasharray: 8 4; animation: dashFlow 1s linear infinite; }
+        .connection-line.visible { opacity: 0.7; }
+        .connection-dot { opacity: 0; transition: opacity 0.4s ease; }
+        .connection-dot.visible { opacity: 1; }
+        @keyframes dashFlow { to { stroke-dashoffset: -12; } }
+
+        .agents-section { flex: 1; overflow-y: auto; padding: 24px 32px; }
+        .agents-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-secondary); margin-bottom: 14px; }
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+
+        .agent-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 18px; cursor: pointer;
+            transition: all 0.3s ease; position: relative; overflow: hidden;
+        }
+        .agent-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-accent, var(--accent-blue)); opacity: 0.5; transition: opacity 0.3s ease;
+        }
+        .agent-card:hover { border-color: var(--card-accent, var(--accent-blue)); transform: translateY(-3px); box-shadow: var(--shadow); }
+        .agent-card:hover::before { opacity: 1; }
+        .agent-card.active { border-color: var(--card-accent, var(--accent-blue)); box-shadow: 0 0 20px rgba(79,195,247,0.12); }
+        .agent-card.active::before { opacity: 1; height: 4px; }
+        .card-header { display: flex; align-items: center; gap: 12px; }
+        .card-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+        }
+        .card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .card-purpose { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .card-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; background: rgba(79,195,247,0.08);
+            border: 1px solid rgba(79,195,247,0.18); border-radius: 20px;
+            font-size: 10px; color: var(--accent-blue); margin-top: 10px;
+        }
+        .card-badge-dot { width: 5px; height: 5px; background: var(--accent-blue); border-radius: 50%; }
+
+        @media (max-width: 1280px) {
+            .agents-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+            .stage-connector { width: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <button class="collapse-btn" id="collapseBtn" title="Toggle Sidebar"><span>&#9664;</span></button>
+            <div class="sidebar-content">
+                <div class="toggle-section">
+                    <span class="toggle-label active" id="darkLabel">&#127769; Dark</span>
+                    <label class="toggle-switch"><input type="checkbox" id="themeToggle"><span class="toggle-slider"></span></label>
+                    <span class="toggle-label" id="lightLabel">Light &#9728;&#65039;</span>
+                </div>
+
+                <div class="country-selector">
+                    <span class="country-selector-label">Country:</span>
+                    <div class="country-pills" id="countryPills"></div>
+                </div>
+
+                <div class="sidebar-header">AI Agents</div>
+
+                <div class="agent-detail-panel" id="agentDetailPanel">
+                    <div id="agentDetailContent"></div>
+                </div>
+
+                <div class="no-agent-msg" id="noAgentMsg" style="font-size:12px;color:var(--text-secondary);padding:12px 8px;line-height:1.6;">
+                    Select a country and click an agent card to view its live status here.
+                </div>
+
+                <div class="connection-info">
+                    <div class="connection-info-text">
+                        Status data is fetched live from SharePoint per country. Select a country above, then click an agent card.
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="header">
+                <h1>Production &amp; Supply Chain &#8212; AI Agents</h1>
+                <p>Interactive visualization of AI agents supporting supply chain stages</p>
+            </div>
+
+            <div class="backbone-wrapper" id="backboneWrapper">
+                <div class="backbone-label">Supply Chain Flow</div>
+                <div class="backbone" id="backbone">
+                    <div class="stage-node" data-stage="planning" id="stage-planning">
+                        <div class="stage-circle" style="border-color:var(--stage-planning);color:var(--stage-planning);">&#128203;</div>
+                        <div class="stage-name">Planning</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-node" data-stage="procurement" id="stage-procurement">
+                        <div class="stage-circle" style="border-color:var(--stage-procurement);color:var(--stage-procurement);">&#128722;</div>
+                        <div class="stage-name">Procurement</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-node" data-stage="production" id="stage-production">
+                        <div class="stage-circle" style="border-color:var(--stage-production);color:var(--stage-production);">&#9881;&#65039;</div>
+                        <div class="stage-name">Production</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-node" data-stage="warehousing" id="stage-warehousing">
+                        <div class="stage-circle" style="border-color:var(--stage-warehousing);color:var(--stage-warehousing);">&#127981;</div>
+                        <div class="stage-name">Warehousing &amp; Transport</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-node" data-stage="returns" id="stage-returns">
+                        <div class="stage-circle" style="border-color:var(--stage-returns);color:var(--stage-returns);">&#128260;</div>
+                        <div class="stage-name">Returns Mgmt</div>
+                    </div>
+                </div>
+                <svg class="connections-svg" id="connectionsSvg"></svg>
+            </div>
+
+            <div class="agents-section" id="agentsSection">
+                <div class="agents-label">AI Agents &#8212; Click to explore connections</div>
+                <div class="agents-grid" id="agentsGrid"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    (function() {
+        // ========== CONFIG ==========
+        var SHAREPOINT_CONFIG = {
+            siteUrl: 'https://syngenta.sharepoint.com/:l:/r/sites/dpi-amea-ai-ml-hub/Lists/AMEA%20AI%20Agent%20Status?e=A4rPpz',
+            listName: 'AMEA AI Agent Status'
+        };
+
+        // SharePoint List Columns:
+        // Title (text) - agent id | Country (choice) - IN/BD/PK
+        // Status (choice) - Live/Pilot/In Development/Planned/On Hold
+        // CurrentStatus (multi-line) | OpenTopics (multi-line) | NextSteps (multi-line) | LastUpdated (date)
+
+        var COUNTRIES = [
+            { code: 'IN', name: 'India', flag: String.fromCodePoint(0x1F1EE, 0x1F1F3) },
+            { code: 'BD', name: 'Bangladesh', flag: String.fromCodePoint(0x1F1E7, 0x1F1E9) },
+            { code: 'PK', name: 'Pakistan', flag: String.fromCodePoint(0x1F1F5, 0x1F1F0) }
+        ];
+
+        var selectedCountry = 'IN';
+
+        var agents = [
+            { id: 'ml-forecasting', name: 'ML Forecasting', icon: String.fromCodePoint(0x1F916), color: '#4fc3f7', purpose: 'Demand prediction using machine learning', stages: ['planning'] },
+            { id: 'pab', name: 'Projected Available Balance (PAB)', icon: String.fromCodePoint(0x1F4CA), color: '#66bb6a', purpose: 'Inventory projection across the chain', stages: ['planning','procurement','production','warehousing'] },
+            { id: 'unconfirmed-demand', name: 'Unconfirmed Demand', icon: String.fromCodePoint(0x26A0, 0xFE0F), color: '#ffa726', purpose: 'Flagging unconfirmed orders for action', stages: ['planning','procurement','production'] },
+            { id: 'event-tool', name: 'Event Tool', icon: String.fromCodePoint(0x1F4C5), color: '#ab47bc', purpose: 'Managing supply/demand events', stages: ['planning','warehousing'] },
+            { id: 'past-due-receipt', name: 'Past Due Receipt', icon: String.fromCodePoint(0x1F6A8), color: '#ef5350', purpose: 'Overdue delivery monitoring', stages: ['planning','procurement'] },
+            { id: 'third-party-spend', name: 'Third Party Spend', icon: String.fromCodePoint(0x1F4B0), color: '#26c6da', purpose: 'External spend analysis & optimization', stages: ['procurement','warehousing'] }
+        ];
+
+        var stageColors = { planning:'#4fc3f7', procurement:'#66bb6a', production:'#ffa726', warehousing:'#ab47bc', returns:'#ef5350' };
+        var stageNames = { planning:'Planning', procurement:'Procurement', production:'Production', warehousing:'Warehousing & Transport', returns:'Returns Mgmt' };
+
+        var agentLiveData = {};
+        var activeAgent = null;
+
+        // ========== HELPERS ==========
+        function getStatusClass(status) {
+            if (!status) return 'status-planned';
+            var s = status.toLowerCase().replace(/\s+/g, '-');
+            return {'live':'status-live','pilot':'status-pilot','in-development':'status-in-development','planned':'status-planned','on-hold':'status-on-hold'}[s] || 'status-planned';
+        }
+
+        function getStatusColor(status) {
+            if (!status) return '#8ba4b8';
+            var s = status.toLowerCase();
+            return {'live':'#66bb6a','pilot':'#4fc3f7','in development':'#ffa726','planned':'#8ba4b8','on hold':'#ef5350'}[s] || '#8ba4b8';
+        }
+
+        function parseToList(text) {
+            if (!text) return '<span style="color:var(--text-secondary);font-style:italic;">No data available</span>';
+            var stripped = text.replace(/<[^>]*>/g, '');
+            var lines = stripped.split(/[\n\r]+/).map(function(l){ return l.replace(/^[\s\-\u2022*]+/, '').trim(); }).filter(function(l){ return l.length > 0; });
+            if (lines.length === 0) return '<span style="color:var(--text-secondary);font-style:italic;">No data available</span>';
+            if (lines.length === 1) return '<span>' + lines[0] + '</span>';
+            return '<ul>' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>';
+        }
+
+        // ========== COUNTRY PILLS ==========
+        function renderCountryPills() {
+            var container = document.getElementById('countryPills');
+            if (!container) return;
+            container.innerHTML = '';
+            COUNTRIES.forEach(function(country) {
+                var pill = document.createElement('button');
+                pill.className = 'country-pill' + (country.code === selectedCountry ? ' active' : '');
+                pill.setAttribute('data-country', country.code);
+                pill.innerHTML = '<span class="flag">' + country.flag + '</span>' + country.code;
+                pill.addEventListener('click', function() { selectCountry(country.code); });
+                container.appendChild(pill);
+            });
+        }
+
+        function selectCountry(code) {
+            selectedCountry = code;
+            document.querySelectorAll('.country-pill').forEach(function(p) {
+                p.classList.toggle('active', p.getAttribute('data-country') === code);
+            });
+            renderCards();
+            if (activeAgent) {
+                var agent = agents.find(function(a){ return a.id === activeAgent; });
+                if (agent) showDetailPanel(agent);
+            }
+        }
+
+        // ========== SHAREPOINT FETCH ==========
+        function fetchSharePointData() {
+            var url = SHAREPOINT_CONFIG.siteUrl + "/_api/web/lists/getbytitle('" + SHAREPOINT_CONFIG.listName + "')/items?$select=Title,Country,Status,CurrentStatus,OpenTopics,NextSteps,LastUpdated&$top=500";
+            fetch(url, {
+                method: 'GET',
+                headers: { 'Accept':'application/json;odata=verbose', 'Content-Type':'application/json;odata=verbose' },
+                credentials: 'include'
+            })
+            .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function(data) {
+                agentLiveData = {};
+                data.d.results.forEach(function(item) {
+                    var aid = item.Title ? item.Title.toLowerCase().trim() : '';
+                    var ctry = item.Country ? item.Country.toUpperCase().trim() : '';
+                    if (!aid || !ctry) return;
+                    if (!agentLiveData[aid]) agentLiveData[aid] = {};
+                    agentLiveData[aid][ctry] = {
+                        status: item.Status || 'Planned',
+                        currentStatus: item.CurrentStatus || '',
+                        openTopics: item.OpenTopics || '',
+                        nextSteps: item.NextSteps || '',
+                        lastUpdated: item.LastUpdated || null
+                    };
+                });
+                renderCards();
+                if (activeAgent) {
+                    var agent = agents.find(function(a){ return a.id === activeAgent; });
+                    if (agent) showDetailPanel(agent);
+                }
+            })
+            .catch(function(err) {
+                console.warn('SharePoint fetch failed:', err.message);
+            });
+        }
+
+        // ========== RENDER CARDS ==========
+        function renderCards() {
+            var grid = document.getElementById('agentsGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            agents.forEach(function(agent) {
+                var card = document.createElement('div');
+                card.className = 'agent-card' + (activeAgent === agent.id ? ' active' : '');
+                card.setAttribute('data-agent-id', agent.id);
+                card.style.setProperty('--card-accent', agent.color);
+
+                var countryStatusHTML = '';
+                var agentData = agentLiveData[agent.id];
+                if (agentData && Object.keys(agentData).length > 0) {
+                    var items = COUNTRIES.map(function(c) {
+                        var d = agentData[c.code];
+                        var st = d ? d.status : null;
+                        var col = getStatusColor(st);
+                        var lbl = st || '\u2014';
+                        return '<div class="card-country-status"><span class="country-code">' + c.code + '</span><span class="mini-dot" style="background:' + col + ';"></span><span class="mini-label">' + lbl + '</span></div>';
+                    }).join('');
+                    countryStatusHTML = '<div class="card-status-section"><div class="card-country-statuses">' + items + '</div></div>';
+                }
+
+                card.innerHTML =
+                    '<div class="card-header"><div class="card-icon" style="background:' + agent.color + '18;border:1px solid ' + agent.color + '33;">' + agent.icon + '</div><div><div class="card-title">' + agent.name + '</div><div class="card-purpose">' + agent.purpose + '</div></div></div>' +
+                    '<div class="card-badge"><div class="card-badge-dot" style="background:' + agent.color + ';"></div>' + agent.stages.length + ' stage' + (agent.stages.length > 1 ? 's' : '') + ' connected</div>' +
+                    countryStatusHTML;
+
+                card.addEventListener('click', function() { toggleAgent(agent.id); });
+                grid.appendChild(card);
+            });
+        }
+
+        // ========== TOGGLE ==========
+        function toggleAgent(agentId) {
+            var stages = document.querySelectorAll('.stage-node');
+            var noMsg = document.getElementById('noAgentMsg');
+
+            if (activeAgent === agentId) {
+                activeAgent = null;
+                document.querySelectorAll('.agent-card').forEach(function(c){ c.classList.remove('active'); });
+                stages.forEach(function(s){ s.classList.remove('highlighted'); s.querySelector('.stage-circle').classList.remove('highlighted'); });
+                clearConnections();
+                hideDetailPanel();
+                if (noMsg) noMsg.style.display = 'block';
+                return;
+            }
+
+            activeAgent = agentId;
+            var agent = agents.find(function(a){ return a.id === agentId; });
+            document.querySelectorAll('.agent-card').forEach(function(c){ c.classList.toggle('active', c.getAttribute('data-agent-id') === agentId); });
+            stages.forEach(function(s){
+                var connected = agent.stages.indexOf(s.getAttribute('data-stage')) !== -1;
+                s.classList.toggle('highlighted', connected);
+                s.querySelector('.stage-circle').classList.toggle('highlighted', connected);
+            });
+            drawConnections(agent);
+            showDetailPanel(agent);
+            if (noMsg) noMsg.style.display = 'none';
+        }
+
+        // ========== DETAIL PANEL ==========
+        function showDetailPanel(agent) {
+            var panel = document.getElementById('agentDetailPanel');
+            var content = document.getElementById('agentDetailContent');
+            if (!panel || !content) return;
+
+            var agentData = agentLiveData[agent.id];
+            var liveData = agentData ? agentData[selectedCountry] : null;
+            var cObj = COUNTRIES.find(function(c){ return c.code === selectedCountry; });
+            var cLabel = cObj ? (cObj.flag + ' ' + cObj.name) : selectedCountry;
+
+            var html = '';
+            if (liveData) {
+                var sc = getStatusClass(liveData.status);
+                var fd = '';
+                if (liveData.lastUpdated) { try { fd = new Date(liveData.lastUpdated).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); } catch(e){} }
+
+                html = '<div class="detail-panel-card" style="border-left-color:' + agent.color + ';">' +
+                    '<button class="detail-panel-close" id="detailCloseBtn" title="Close">&times;</button>' +
+                    '<div class="detail-panel-header"><div class="detail-panel-icon" style="background:' + agent.color + '20;border:1px solid ' + agent.color + '40;">' + agent.icon + '</div><div><div class="detail-panel-title">' + agent.name + '</div><div class="detail-panel-country-badge">' + cLabel + '</div></div></div>' +
+                    '<div class="detail-live-section">' +
+                    '<div class="detail-panel-section"><div class="detail-panel-section-label">Status</div><div class="detail-panel-section-value"><span class="status-badge ' + sc + '"><span class="status-dot"></span>' + liveData.status + '</span></div></div>' +
+                    '<div class="detail-panel-section"><div class="detail-panel-section-label">Current Status</div><div class="detail-panel-section-value">' + parseToList(liveData.currentStatus) + '</div></div>' +
+                    '<div class="detail-panel-section"><div class="detail-panel-section-label">Open Topics</div><div class="detail-panel-section-value">' + parseToList(liveData.openTopics) + '</div></div>' +
+                    '<div class="detail-panel-section"><div class="detail-panel-section-label">Next Steps</div><div class="detail-panel-section-value">' + parseToList(liveData.nextSteps) + '</div></div>' +
+                    (fd ? '<div class="last-updated">Last updated: ' + fd + '</div>' : '') +
+                    '</div></div>';
+            } else {
+                html = '<div class="detail-panel-card" style="border-left-color:' + agent.color + ';">' +
+                    '<button class="detail-panel-close" id="detailCloseBtn" title="Close">&times;</button>' +
+                    '<div class="detail-panel-header"><div class="detail-panel-icon" style="background:' + agent.color + '20;border:1px solid ' + agent.color + '40;">' + agent.icon + '</div><div><div class="detail-panel-title">' + agent.name + '</div><div class="detail-panel-country-badge">' + cLabel + '</div></div></div>' +
+                    '<div class="detail-live-section"><div class="live-data-loading">No data for ' + (cObj ? cObj.name : selectedCountry) + '. Ensure SharePoint list has Title="' + agent.id + '" and Country="' + selectedCountry + '".</div></div></div>';
+            }
+
+            content.innerHTML = html;
+            panel.classList.add('visible');
+            var cb = document.getElementById('detailCloseBtn');
+            if (cb) cb.addEventListener('click', function(){ if (activeAgent) toggleAgent(activeAgent); });
+        }
+
+        function hideDetailPanel() {
+            var p = document.getElementById('agentDetailPanel');
+            if (p) p.classList.remove('visible');
+        }
+
+        // ========== CONNECTIONS ==========
+        function clearConnections() { var s = document.getElementById('connectionsSvg'); if (s) s.innerHTML = ''; }
+
+        function drawConnections(agent) {
+            clearConnections();
+            var svg = document.getElementById('connectionsSvg');
+            var wrapper = document.getElementById('backboneWrapper');
+            if (!svg || !wrapper) return;
+            var wr = wrapper.getBoundingClientRect();
+            var ac = document.querySelector('.agent-card[data-agent-id="' + agent.id + '"]');
+            if (!ac) return;
+            var cr = ac.getBoundingClientRect();
+            var cx = cr.left + cr.width/2 - wr.left;
+            var cy = cr.top - wr.top;
+
+            agent.stages.forEach(function(sid, idx) {
+                var se = document.getElementById('stage-' + sid);
+                if (!se) return;
+                var sr = se.getBoundingClientRect();
+                var sx = sr.left + sr.width/2 - wr.left;
+                var sy = sr.bottom - wr.top + 5;
+                var my = (sy + cy) / 2;
+
+                var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M '+sx+' '+sy+' C '+sx+' '+my+', '+cx+' '+my+', '+cx+' '+cy);
+                path.setAttribute('stroke', agent.color);
+                path.classList.add('connection-line');
+
+                var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dot.setAttribute('cx', sx); dot.setAttribute('cy', sy);
+                dot.setAttribute('r', '5'); dot.setAttribute('fill', agent.color);
+                dot.classList.add('connection-dot');
+
+                svg.appendChild(path); svg.appendChild(dot);
+                setTimeout(function(){ path.classList.add('visible'); dot.classList.add('visible'); }, idx * 100);
+            });
+        }
+
+        function redrawIfActive() {
+            if (activeAgent) { var a = agents.find(function(x){return x.id===activeAgent;}); if (a) drawConnections(a); }
+        }
+
+        // ========== EVENTS ==========
+        var agSec = document.getElementById('agentsSection');
+        if (agSec) agSec.addEventListener('scroll', redrawIfActive);
+        window.addEventListener('resize', redrawIfActive);
+
+        var sbar = document.getElementById('sidebar');
+        var cbtn = document.getElementById('collapseBtn');
+        if (cbtn) cbtn.addEventListener('click', function(){ sbar.classList.toggle('collapsed'); setTimeout(redrawIfActive, 350); });
+
+        var tt = document.getElementById('themeToggle');
+        var dl = document.getElementById('darkLabel');
+        var ll = document.getElementById('lightLabel');
+        if (tt) tt.addEventListener('change', function(){
+            if (tt.checked) { document.body.classList.add('light-theme'); dl.classList.remove('active'); ll.classList.add('active'); }
+            else { document.body.classList.remove('light-theme'); dl.classList.add('active'); ll.classList.remove('active'); }
+            setTimeout(redrawIfActive, 100);
+        });
+
+        // ========== INIT ==========
+        renderCountryPills();
+        renderCards();
+        fetchSharePointData();
+        setInterval(fetchSharePointData, 300000);
+    })();
+    </script>
+</body>
+</html>
