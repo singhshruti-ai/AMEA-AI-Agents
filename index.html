@@ -201,8 +201,9 @@
             background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);
             font-size: 11px; color: var(--text-secondary);
         }
-        .data-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef5350; flex-shrink: 0; }
+        .data-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .data-status-dot.connected { background: #66bb6a; }
+        .data-status-dot.disconnected { background: #ef5350; }
 
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .header { padding: 18px 32px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
@@ -294,8 +295,8 @@
                 </div>
 
                 <div class="data-status-bar">
-                    <span class="data-status-dot" id="dataStatusDot"></span>
-                    <span id="dataStatusText">Loading data...</span>
+                    <span class="data-status-dot connected" id="dataStatusDot"></span>
+                    <span id="dataStatusText">Data loaded</span>
                 </div>
 
                 <div class="country-selector">
@@ -315,7 +316,7 @@
 
                 <div class="connection-info">
                     <div class="connection-info-text">
-                        Data is loaded from agents-data.json. Update the JSON file to refresh statuses. Use Power Automate to sync from SharePoint automatically.
+                        To update status data, edit the AGENTS_DATA block inside this HTML file and re-commit to GitHub.
                     </div>
                 </div>
             </div>
@@ -367,9 +368,47 @@
 
     <script>
     (function() {
-        // ========== CONFIG ==========
-        // Path to your JSON data file (relative to the HTML file location on GitHub)
-        var DATA_FILE = 'agents-data.json';
+
+        // =====================================================================
+        // DATA SECTION - Edit this JSON to update agent statuses
+        // Each row = one agent in one country
+        // To update: change values below, commit to GitHub, done.
+        // =====================================================================
+        var AGENTS_DATA = [
+            {
+                "Title": "ML Forecasting",
+                "Country": "IN",
+                "StatusBadge": "Green",
+                "Status": "Adoption",
+                "CurrentStatus": "May adoption strategy review on going",
+                "NextSteps": "Review model performance at Division Level\nReview model performance at UC for Co-Mkting",
+                "LastUpdated": "2026-05-08"
+            },
+            {
+                "Title": "Unconfirmed Demand",
+                "Country": "IN",
+                "StatusBadge": "Amber",
+                "Status": "Roll Out",
+                "CurrentStatus": "Workshop scheduled to understand WoW with FG_CP India team",
+                "NextSteps": "Review IN use cases vs. Agent capabilities and define adoption strategy",
+                "LastUpdated": "2026-05-08"
+            },
+            {
+                "Title": "ML Forecasting",
+                "Country": "BD",
+                "StatusBadge": "Green",
+                "Status": "Roll Out",
+                "CurrentStatus": "May adoption strategy review in BD on going",
+                "NextSteps": "",
+                "LastUpdated": "2026-05-08"
+            }
+            // ADD MORE ROWS HERE as needed:
+            // { "Title": "PAB", "Country": "IN", "StatusBadge": "Green", "Status": "Live", "CurrentStatus": "...", "NextSteps": "...", "LastUpdated": "2026-05-08" },
+            // { "Title": "Event Tool", "Country": "PK", "StatusBadge": "Amber", "Status": "Pilot", "CurrentStatus": "...", "NextSteps": "...", "LastUpdated": "2026-05-08" },
+        ];
+        // =====================================================================
+        // END DATA SECTION
+        // =====================================================================
 
         var COUNTRIES = [
             { code: 'IN', name: 'India', flag: String.fromCodePoint(0x1F1EE, 0x1F1F3) },
@@ -379,8 +418,8 @@
 
         var selectedCountry = 'IN';
 
-        // Agent definitions
-        // IMPORTANT: 'title' must EXACTLY match the "Title" column value in your SharePoint list / JSON file
+        // Agent card definitions
+        // 'title' MUST exactly match the "Title" value you use in AGENTS_DATA above
         var agents = [
             { id: 'ml-forecasting', title: 'ML Forecasting', name: 'ML Forecasting', icon: String.fromCodePoint(0x1F916), color: '#4fc3f7', purpose: 'Demand prediction using machine learning', stages: ['planning'] },
             { id: 'pab', title: 'PAB', name: 'Projected Available Balance (PAB)', icon: String.fromCodePoint(0x1F4CA), color: '#66bb6a', purpose: 'Inventory projection across the chain', stages: ['planning','procurement','production','warehousing'] },
@@ -390,7 +429,7 @@
             { id: 'third-party-spend', title: 'Third Party Spend', name: 'Third Party Spend', icon: String.fromCodePoint(0x1F4B0), color: '#26c6da', purpose: 'External spend analysis & optimization', stages: ['procurement','warehousing'] }
         ];
 
-        var agentLiveData = {}; // keyed by agent title (lowercase) then country code
+        var agentLiveData = {};
         var activeAgent = null;
 
         // ========== HELPERS ==========
@@ -416,18 +455,36 @@
 
         function parseToList(text) {
             if (!text) return '<span style="color:var(--text-secondary);font-style:italic;">No data available</span>';
-            var stripped = text.replace(/<[^>]*>/g, '');
-            var lines = stripped.split(/[\n\r]+/).map(function(l){ return l.replace(/^[\s\-\u2022*]+/, '').trim(); }).filter(function(l){ return l.length > 0; });
+            var lines = text.split(/\n/).map(function(l){ return l.replace(/^[\s\-*]+/, '').trim(); }).filter(function(l){ return l.length > 0; });
             if (lines.length === 0) return '<span style="color:var(--text-secondary);font-style:italic;">No data available</span>';
             if (lines.length === 1) return '<span>' + lines[0] + '</span>';
             return '<ul>' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>';
         }
 
-        function setDataStatus(connected, msg) {
+        // ========== LOAD EMBEDDED DATA ==========
+        function loadData() {
+            agentLiveData = {};
+            AGENTS_DATA.forEach(function(item) {
+                var agentTitle = item.Title ? item.Title.trim() : '';
+                var country = item.Country ? item.Country.toUpperCase().trim() : '';
+                if (!agentTitle || !country) return;
+
+                var key = agentTitle.toLowerCase();
+                if (!agentLiveData[key]) agentLiveData[key] = {};
+
+                agentLiveData[key][country] = {
+                    statusBadge: item.StatusBadge || '',
+                    status: item.Status || '',
+                    currentStatus: item.CurrentStatus || '',
+                    nextSteps: item.NextSteps || '',
+                    lastUpdated: item.LastUpdated || ''
+                };
+            });
+
             var dot = document.getElementById('dataStatusDot');
             var txt = document.getElementById('dataStatusText');
-            if (dot) dot.classList.toggle('connected', connected);
-            if (txt) txt.textContent = msg;
+            if (dot) { dot.classList.add('connected'); dot.classList.remove('disconnected'); }
+            if (txt) txt.textContent = 'Data loaded \u2022 ' + AGENTS_DATA.length + ' records';
         }
 
         // ========== COUNTRY PILLS ==========
@@ -455,50 +512,6 @@
                 var agent = agents.find(function(a){ return a.id === activeAgent; });
                 if (agent) showDetailPanel(agent);
             }
-        }
-
-        // ========== DATA FETCH (from JSON file) ==========
-        function fetchData() {
-            setDataStatus(false, 'Loading data...');
-
-            fetch(DATA_FILE, { cache: 'no-cache' })
-            .then(function(response) {
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                return response.json();
-            })
-            .then(function(items) {
-                agentLiveData = {};
-
-                items.forEach(function(item) {
-                    var agentTitle = item.Title ? item.Title.trim() : '';
-                    var country = item.Country ? item.Country.toUpperCase().trim() : '';
-
-                    if (!agentTitle || !country) return;
-
-                    var key = agentTitle.toLowerCase();
-                    if (!agentLiveData[key]) agentLiveData[key] = {};
-
-                    agentLiveData[key][country] = {
-                        statusBadge: item.StatusBadge || item['Status Badge'] || '',
-                        status: item.Status || '',
-                        currentStatus: item.CurrentStatus || item['Current Status'] || '',
-                        nextSteps: item.NextSteps || item['Next Steps'] || '',
-                        lastUpdated: item.LastUpdated || item['Last Updated'] || null
-                    };
-                });
-
-                var count = items.filter(function(i){ return i.Title; }).length;
-                setDataStatus(true, 'Connected \u2022 ' + count + ' records loaded');
-                renderCards();
-                if (activeAgent) {
-                    var agent = agents.find(function(a){ return a.id === activeAgent; });
-                    if (agent) showDetailPanel(agent);
-                }
-            })
-            .catch(function(err) {
-                console.warn('Data fetch failed:', err.message);
-                setDataStatus(false, 'Failed to load agents-data.json');
-            });
         }
 
         // ========== RENDER CARDS ==========
@@ -596,7 +609,7 @@
                 html = '<div class="detail-panel-card" style="border-left-color:' + agent.color + ';">' +
                     '<button class="detail-panel-close" id="detailCloseBtn" title="Close">&times;</button>' +
                     '<div class="detail-panel-header"><div class="detail-panel-icon" style="background:' + agent.color + '20;border:1px solid ' + agent.color + '40;">' + agent.icon + '</div><div><div class="detail-panel-title">' + agent.name + '</div><div class="detail-panel-country-badge">' + cLabel + '</div></div></div>' +
-                    '<div class="detail-live-section"><div class="live-data-loading">No data for ' + (cObj ? cObj.name : selectedCountry) + '. Add a row in agents-data.json with Title=\"' + agent.title + '\" and Country=\"' + selectedCountry + '\".</div></div></div>';
+                    '<div class="detail-live-section"><div class="live-data-loading">No data yet for ' + (cObj ? cObj.name : selectedCountry) + '. Add a row in the AGENTS_DATA section with Title="' + agent.title + '" and Country="' + selectedCountry + '".</div></div></div>';
             }
 
             content.innerHTML = html;
@@ -671,9 +684,9 @@
         });
 
         // ========== INIT ==========
+        loadData();
         renderCountryPills();
         renderCards();
-        fetchData();
     })();
     </script>
 </body>
