@@ -201,7 +201,7 @@
             background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);
             font-size: 11px; color: var(--text-secondary);
         }
-        .data-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef5350; }
+        .data-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef5350; flex-shrink: 0; }
         .data-status-dot.connected { background: #66bb6a; }
 
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -295,7 +295,7 @@
 
                 <div class="data-status-bar">
                     <span class="data-status-dot" id="dataStatusDot"></span>
-                    <span id="dataStatusText">Connecting to SharePoint...</span>
+                    <span id="dataStatusText">Loading data...</span>
                 </div>
 
                 <div class="country-selector">
@@ -315,7 +315,7 @@
 
                 <div class="connection-info">
                     <div class="connection-info-text">
-                        Status data is fetched live from SharePoint per country. Select a country above, then click an agent card.
+                        Data is loaded from agents-data.json. Update the JSON file to refresh statuses. Use Power Automate to sync from SharePoint automatically.
                     </div>
                 </div>
             </div>
@@ -368,19 +368,8 @@
     <script>
     (function() {
         // ========== CONFIG ==========
-        // SharePoint site and list configuration
-        // UPDATE THIS: Replace with your actual site URL (just the site, not the list URL)
-        var SP_SITE_URL = 'https://syngenta.sharepoint.com/sites/dpi-amea-ai-ml-hub';
-        var SP_LIST_NAME = 'AMEA AI Agent Status';
-
-        // SharePoint List Column Mapping (internal names as they appear in REST API):
-        // Title (text) -> Agent name e.g. "ML Forecasting" (this is also the "Agent Id" header in your list)
-        // Country (choice) -> "IN", "BD", "PK"
-        // Status_x0020_Badge (choice) -> "Green", "Amber", "Red"
-        // Status (choice) -> "Adoption", "Roll Out", "Pilot", "In Development", "Planned", "On Hold"
-        // Current_x0020_Status (multi-line) -> free text
-        // Next_x0020_Steps (multi-line) -> free text
-        // Last_x0020_Updated (date) -> date
+        // Path to your JSON data file (relative to the HTML file location on GitHub)
+        var DATA_FILE = 'agents-data.json';
 
         var COUNTRIES = [
             { code: 'IN', name: 'India', flag: String.fromCodePoint(0x1F1EE, 0x1F1F3) },
@@ -390,7 +379,8 @@
 
         var selectedCountry = 'IN';
 
-        // Agent definitions - the 'title' field MUST match the "Title" column in SharePoint exactly
+        // Agent definitions
+        // IMPORTANT: 'title' must EXACTLY match the "Title" column value in your SharePoint list / JSON file
         var agents = [
             { id: 'ml-forecasting', title: 'ML Forecasting', name: 'ML Forecasting', icon: String.fromCodePoint(0x1F916), color: '#4fc3f7', purpose: 'Demand prediction using machine learning', stages: ['planning'] },
             { id: 'pab', title: 'PAB', name: 'Projected Available Balance (PAB)', icon: String.fromCodePoint(0x1F4CA), color: '#66bb6a', purpose: 'Inventory projection across the chain', stages: ['planning','procurement','production','warehousing'] },
@@ -399,8 +389,6 @@
             { id: 'past-due-receipt', title: 'Past Due Receipt', name: 'Past Due Receipt', icon: String.fromCodePoint(0x1F6A8), color: '#ef5350', purpose: 'Overdue delivery monitoring', stages: ['planning','procurement'] },
             { id: 'third-party-spend', title: 'Third Party Spend', name: 'Third Party Spend', icon: String.fromCodePoint(0x1F4B0), color: '#26c6da', purpose: 'External spend analysis & optimization', stages: ['procurement','warehousing'] }
         ];
-
-        var stageColors = { planning:'#4fc3f7', procurement:'#66bb6a', production:'#ffa726', warehousing:'#ab47bc', returns:'#ef5350' };
 
         var agentLiveData = {}; // keyed by agent title (lowercase) then country code
         var activeAgent = null;
@@ -469,35 +457,19 @@
             }
         }
 
-        // ========== SHAREPOINT FETCH ==========
-        function fetchSharePointData() {
-            // Build the REST API URL using proper SharePoint REST endpoint
-            // Select columns using their internal names (spaces encoded as _x0020_)
-            var selectFields = 'Title,Country,Status_x0020_Badge,Status,Current_x0020_Status,Next_x0020_Steps,Last_x0020_Updated';
-            var apiUrl = SP_SITE_URL + "/_api/web/lists/getbytitle('" + encodeURIComponent(SP_LIST_NAME) + "')/items?$select=" + selectFields + "&$top=500";
+        // ========== DATA FETCH (from JSON file) ==========
+        function fetchData() {
+            setDataStatus(false, 'Loading data...');
 
-            setDataStatus(false, 'Fetching data from SharePoint...');
-
-            fetch(apiUrl, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json;odata=nometadata',
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-            })
+            fetch(DATA_FILE, { cache: 'no-cache' })
             .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ' - ' + response.statusText);
-                }
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 return response.json();
             })
-            .then(function(data) {
+            .then(function(items) {
                 agentLiveData = {};
-                var items = data.value || [];
 
                 items.forEach(function(item) {
-                    // Title column contains agent name (e.g., "ML Forecasting")
                     var agentTitle = item.Title ? item.Title.trim() : '';
                     var country = item.Country ? item.Country.toUpperCase().trim() : '';
 
@@ -507,11 +479,11 @@
                     if (!agentLiveData[key]) agentLiveData[key] = {};
 
                     agentLiveData[key][country] = {
-                        statusBadge: item.Status_x0020_Badge || '',
+                        statusBadge: item.StatusBadge || item['Status Badge'] || '',
                         status: item.Status || '',
-                        currentStatus: item.Current_x0020_Status || '',
-                        nextSteps: item.Next_x0020_Steps || '',
-                        lastUpdated: item.Last_x0020_Updated || null
+                        currentStatus: item.CurrentStatus || item['Current Status'] || '',
+                        nextSteps: item.NextSteps || item['Next Steps'] || '',
+                        lastUpdated: item.LastUpdated || item['Last Updated'] || null
                     };
                 });
 
@@ -524,8 +496,8 @@
                 }
             })
             .catch(function(err) {
-                console.warn('SharePoint fetch failed:', err.message);
-                setDataStatus(false, 'Disconnected: ' + err.message);
+                console.warn('Data fetch failed:', err.message);
+                setDataStatus(false, 'Failed to load agents-data.json');
             });
         }
 
@@ -541,19 +513,18 @@
                 card.setAttribute('data-agent-id', agent.id);
                 card.style.setProperty('--card-accent', agent.color);
 
-                // Look up live data using the agent's title (lowercase match)
                 var agentData = agentLiveData[agent.title.toLowerCase()];
 
                 var countryStatusHTML = '';
                 if (agentData && Object.keys(agentData).length > 0) {
-                    var items = COUNTRIES.map(function(c) {
+                    var statusItems = COUNTRIES.map(function(c) {
                         var d = agentData[c.code];
                         var badge = d ? d.statusBadge : null;
                         var col = getBadgeColor(badge);
                         var lbl = d ? (d.status || badge || '\u2014') : '\u2014';
                         return '<div class="card-country-status"><span class="country-code">' + c.code + '</span><span class="mini-dot" style="background:' + col + ';"></span><span class="mini-label">' + lbl + '</span></div>';
                     }).join('');
-                    countryStatusHTML = '<div class="card-status-section"><div class="card-country-statuses">' + items + '</div></div>';
+                    countryStatusHTML = '<div class="card-status-section"><div class="card-country-statuses">' + statusItems + '</div></div>';
                 }
 
                 card.innerHTML =
@@ -600,7 +571,6 @@
             var content = document.getElementById('agentDetailContent');
             if (!panel || !content) return;
 
-            // Look up live data using agent.title (matches SharePoint Title column)
             var agentData = agentLiveData[agent.title.toLowerCase()];
             var liveData = agentData ? agentData[selectedCountry] : null;
             var cObj = COUNTRIES.find(function(c){ return c.code === selectedCountry; });
@@ -626,7 +596,7 @@
                 html = '<div class="detail-panel-card" style="border-left-color:' + agent.color + ';">' +
                     '<button class="detail-panel-close" id="detailCloseBtn" title="Close">&times;</button>' +
                     '<div class="detail-panel-header"><div class="detail-panel-icon" style="background:' + agent.color + '20;border:1px solid ' + agent.color + '40;">' + agent.icon + '</div><div><div class="detail-panel-title">' + agent.name + '</div><div class="detail-panel-country-badge">' + cLabel + '</div></div></div>' +
-                    '<div class="detail-live-section"><div class="live-data-loading">No data for ' + (cObj ? cObj.name : selectedCountry) + '. Ensure SharePoint list has Title=\"' + agent.title + '\" with Country=\"' + selectedCountry + '\".</div></div></div>';
+                    '<div class="detail-live-section"><div class="live-data-loading">No data for ' + (cObj ? cObj.name : selectedCountry) + '. Add a row in agents-data.json with Title=\"' + agent.title + '\" and Country=\"' + selectedCountry + '\".</div></div></div>';
             }
 
             content.innerHTML = html;
@@ -703,8 +673,7 @@
         // ========== INIT ==========
         renderCountryPills();
         renderCards();
-        fetchSharePointData();
-        setInterval(fetchSharePointData, 300000); // refresh every 5 min
+        fetchData();
     })();
     </script>
 </body>
