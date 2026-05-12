@@ -3,27 +3,30 @@
     "Title": "ML Forecasting",
     "Country": "IN",
     "StatusBadge": "Green",
-    "Status": "Adoption",
+    "Status": "Rollout",
     "CurrentStatus": "May adoption strategy review on going",
-    "NextSteps": "Review model performance at Division Level\nReview model performance at UC for Co-Mkting",
-    "LastUpdated": "2026-05-08"
+    "NextSteps": "Review model performance at Division Level\Review model performance at UC for Co-Mkting SKU",
+    "LastUpdated": "2026-05-12"
   },
   {
     "Title": "Unconfirmed Demand",
     "Country": "IN",
     "StatusBadge": "Amber",
-    "Status": "Roll Out",
-    "CurrentStatus": "Workshop scheudle to understand WoW with FG_CP India team",
-    "NextSteps": "Review IN use cases vs. Agent capabilties and define adoption strategy",
-    "LastUpdated": "2026-05-08"
+    "Status": "Implementation",
+    "CurrentStatus": "1.Purchase Requisitions(PR) - Plan for May/ Jun - i.	Master corrections to generate right PRs.Revisit WoW. 
+	2. Stock Transfer Requistions(STR) - Workshop scheudles to understand WoW with Regional Team, India team (Planning, Primary & CS team) & APO team.",
+    "NextSteps": "1. PR - For local purchase Negotiation time is part of PTF so need to define way forward. Already raised in monthly meeting. 2. STRs - 
+	i.SKUs defined for BFDF & Institutional should be removed from the scope – already discussed with you so suggest on further action.
+	ii.Other operational concerns already shared with you – but will rediscuss in workshop to define way forward. "
+    "LastUpdated": "2026-05-12"
   },
   {
-    "Title": "ML Forecasting",
-    "Country": "BD",
+    "Title": "Third Party Spend",
+    "Country": "IN",
     "StatusBadge": "Green",
-    "Status": "Roll Out",
-    "CurrentStatus": "May adoption strategy review in BD on going",
-    "NextSteps": "",
-    "LastUpdated": "2026-05-08"
+    "Status": "Implementation",
+    "CurrentStatus": "Primary & Secondary Sprints in production",
+    "NextSteps": "Defect fixes, Additional features to be released by 22nd May. In Pipeline - Workflow ; Custom invoice ; ArtWork",
+    "LastUpdated": "2026-05-12"
   }
 ]
